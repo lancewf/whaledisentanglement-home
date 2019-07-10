@@ -4,6 +4,8 @@ source "$(hab pkg path chef/ci-studio-common)/bin/studio-common"
 # This removes the visual mode when select text with the mouse in vim. 
 echo "set mouse-=a" >> ~/.vimrc
 
+install_if_missing core/curl curl
+
 export WHALEDISENTANGLEMENT_HOME_PORT=8080
 
 function htop() {
@@ -18,13 +20,13 @@ function load_dev_config() {
 [http.listen]
 port = $WHALEDISENTANGLEMENT_HOME_PORT
 bind = '0.0.0.0'
-local_only=true
+local_only=false
 
 "
 }
 
 function start() {
-  install_if_missing core/busybox-static netstat;
+  install_if_missing core/busybox-static netstat
   netstat -an | grep $WHALEDISENTANGLEMENT_HOME_PORT | grep LISTEN >/dev/null 2>/dev/null
   if [ $? == 0 ]; then
     echo "whaledisentanglement_home is already running";
@@ -35,9 +37,16 @@ function start() {
 
   start_sup
 
-  hab start $HAB_ORIGIN/whaledisentanglement_home
+  hab svc load $HAB_ORIGIN/whaledisentanglement_home
 
   wait_or_fail_for_port_to_listen $WHALEDISENTANGLEMENT_HOME_PORT
+}
+
+function rebuild() {
+  build
+  hab svc unload $HAB_ORIGIN/whaledisentanglement_home
+  sleep 3
+  hab svc load $HAB_ORIGIN/whaledisentanglement_home
 }
 
 function start_sup() {
